@@ -2,26 +2,27 @@
 import jax.numpy as numpy
 import jax
 import optax
+import distrax
 
 
 # get a prediction given some normalizations and processes
 # the first parameter is the total normalization;
 # the next two params are the lJVT and hJVT fractions, respectively.
 def predict(params , processes):
-  ntot = params[0]
-  fracs = toprob(params[1:])
-  return ntot * numpy.sum(fracs.T * processes, axis=1)
+  fracs = toprob(params)
+  return numpy.sum(fracs.T * processes, axis=1)
 
 
 # sterling's approximation
+# (not needed for multinomial...)
 def logPoiss(ks , lambdas):
   return ks * numpy.log(lambdas) - lambdas - ks * numpy.log(ks) + ks
 
 
 @jax.jit
-def neglogLH(norms , processes , data ):
-  rates = predict(norms, processes)
-  return - numpy.mean(logPoiss(data , rates))
+def neglogLH(norms , processes , data):
+  probs = predict(norms, processes)
+  return - distrax.Multinomial(numpy.sum(data), probs=probs).log_prob(data)
 
 
 def normalize(xs, axis=None):
@@ -36,7 +37,7 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3):
 
   nprocs = procs.shape[1]
   startfrac = 1.0 / nprocs
-  params = numpy.array( [numpy.sum(datatemp)] + [startfrac] * (nprocs - 1) )
+  params = numpy.array( [startfrac] * (nprocs - 1) )
 
   optimizer = optax.adam(learning_rate=lr)
   opt_state = optimizer.init(params)
@@ -50,17 +51,12 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3):
     updates, opt_state = optimizer.update(grads, opt_state, params)
     params = optax.apply_updates(params, updates)
 
-  print("ntotal predicted:")
-  ntotal = params[0]
-  print(ntotal)
-  print()
-
   print("ntotal data:")
   print(numpy.sum(datatemp))
   print()
 
   print("fractions:")
-  print(toprob(params[1:]))
+  print(toprob(params))
   print()
 
   print("gradients:")
@@ -81,16 +77,18 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3):
   print(neglogLH(params, procs, datatemp))
   print()
 
-  print("final prediction:")
-  print(predict(params, procs))
+  print("predicted fractions:")
+  predfrac = normalize(predict(params, procs))
+  print(predfrac)
   print()
 
-  print("data:")
-  print(datatemp)
+  print("data fractions:")
+  datafrac = normalize(datatemp)
+  print(datafrac)
   print()
 
   print("data/prediction:")
-  print(datatemp / predict(params, procs))
+  print(datafrac / predfrac)
   print()
 
   return params , cov
