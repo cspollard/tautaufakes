@@ -5,10 +5,9 @@ import optax
 import distrax
 
 
-# get a prediction given some normalizations and processes
-# the first parameter is the total normalization;
-# the next two params are the lJVT and hJVT fractions, respectively.
-def predict(params , processes):
+# get a prediction for bin probabilities
+# the params are the fractions for n-1 processes.
+def predictprobs(params , processes):
   fracs = toprob(params)
   return numpy.sum(fracs.T * processes, axis=1)
 
@@ -21,7 +20,7 @@ def logPoiss(ks , lambdas):
 
 @jax.jit
 def neglogLH(norms , processes , data):
-  probs = predict(norms, processes)
+  probs = predictprobs(norms, processes)
   return - distrax.Multinomial(numpy.sum(data), probs=probs).log_prob(data)
 
 
@@ -78,7 +77,7 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3):
   print()
 
   print("predicted fractions:")
-  predfrac = normalize(predict(params, procs))
+  predfrac = normalize(predictprobs(params, procs))
   print(predfrac)
   print()
 
