@@ -32,7 +32,7 @@ def toprob(fracs):
   return numpy.concatenate([fracs, numpy.expand_dims(1-numpy.sum(fracs), 0)])
 
 
-def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3):
+def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3, gradtolerance=None, verbose=True):
 
   nprocs = procs.shape[1]
   startfrac = 1.0 / nprocs
@@ -41,54 +41,61 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3):
   optimizer = optax.adam(learning_rate=lr)
   opt_state = optimizer.init(params)
 
-  print("initial -llh:")
-  print(neglogLH(params, procs, datatemp))
-  print()
+  if verbose:
+    print("initial -llh:")
+    print(neglogLH(params, procs, datatemp))
+    print()
 
   for _ in range(nsteps):
     loss_value, grads = jax.value_and_grad(neglogLH)(params, procs, datatemp)
     updates, opt_state = optimizer.update(grads, opt_state, params)
     params = optax.apply_updates(params, updates)
 
-  print("ntotal data:")
-  print(numpy.sum(datatemp))
-  print()
+    if gradtolerance is not None:
+      if numpy.linalg.norm(grads) < gradtolerance:
+        break
 
-  print("fractions:")
-  print(toprob(params))
-  print()
 
-  print("gradients:")
-  print(jax.grad(neglogLH)(params, procs, datatemp))
-  print()
+  if verbose:
+    print("ntotal data:")
+    print(numpy.sum(datatemp))
+    print()
 
-  print("hessian:")
-  hess = jax.hessian(neglogLH)(params, procs, datatemp)
-  print(hess)
-  print()
+    print("fractions:")
+    print(toprob(params))
+    print()
 
-  print("covariance:")
-  cov = numpy.linalg.inv(hess)
-  print(cov)
-  print()
+    print("gradients:")
+    print(jax.grad(neglogLH)(params, procs, datatemp))
+    print()
 
-  print("final -llh:")
-  print(neglogLH(params, procs, datatemp))
-  print()
+    print("hessian:")
+    hess = jax.hessian(neglogLH)(params, procs, datatemp)
+    print(hess)
+    print()
 
-  print("predicted fractions:")
-  predfrac = normalize(predictprobs(params, procs))
-  print(predfrac)
-  print()
+    print("covariance:")
+    cov = numpy.linalg.inv(hess)
+    print(cov)
+    print()
 
-  print("data fractions:")
-  datafrac = normalize(datatemp)
-  print(datafrac)
-  print()
+    print("final -llh:")
+    print(neglogLH(params, procs, datatemp))
+    print()
 
-  print("data/prediction:")
-  print(datafrac / predfrac)
-  print()
+    print("predicted fractions:")
+    predfrac = normalize(predictprobs(params, procs))
+    print(predfrac)
+    print()
+
+    print("data fractions:")
+    datafrac = normalize(datatemp)
+    print(datafrac)
+    print()
+
+    print("data/prediction:")
+    print(datafrac / predfrac)
+    print()
 
   return params , cov
 
