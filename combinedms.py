@@ -11,7 +11,7 @@ def addDict(hs1, hs2):
 
 # directory -> dictionary
 def toDict(direct):
-  return { pre + k.GetName() : direct.Get(k.GetName()) for k in direct.GetListOfKeys() }
+  return { k.GetName() : direct.Get(k.GetName()) for k in direct.GetListOfKeys() }
 
 
 # dictionary -> directory
@@ -41,5 +41,5 @@ for rule in mergerules:
 
     fout.mkdir(pre+suff)
     fout.cd(pre+suff)
-    writeDict( { pre + k : v for k , v in begin.items() } )
+    writeDict( { k : v for k , v in begin.items() } )
     fout.cd("/")
