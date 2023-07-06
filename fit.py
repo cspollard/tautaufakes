@@ -7,8 +7,7 @@ import distrax
 
 # get a prediction for bin probabilities
 # the params are the fractions for n-1 processes.
-def predictprobs(params , processes):
-  fracs = toprob(params)
+def predictprobs(fracs , processes):
   return numpy.sum(fracs.T * processes, axis=1)
 
 
@@ -20,8 +19,16 @@ def logPoiss(ks , lambdas):
 
 @jax.jit
 def neglogLH(norms , processes , data):
-  probs = predictprobs(norms, processes)
-  return - distrax.Multinomial(numpy.sum(data), probs=probs).log_prob(data)
+  fracs = toprob(norms)
+
+  probs = predictprobs(fracs, processes)
+
+  # regularization to prevent negative fractions
+  regularization = numpy.sum(jax.nn.softplus(-10000.0*fracs))
+
+  return \
+    regularization \
+    - distrax.Multinomial(numpy.sum(data), probs=probs).log_prob(data)
 
 
 def normalize(xs, axis=None):
@@ -56,13 +63,17 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3, gradtolerance=None, ver
         break
 
 
+  hess = jax.hessian(neglogLH)(params, procs, datatemp)
+  cov = numpy.linalg.inv(hess)
+
   if verbose:
     print("ntotal data:")
     print(numpy.sum(datatemp))
     print()
 
     print("fractions:")
-    print(toprob(params))
+    fracs = toprob(params)
+    print(fracs)
     print()
 
     print("gradients:")
@@ -70,12 +81,10 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3, gradtolerance=None, ver
     print()
 
     print("hessian:")
-    hess = jax.hessian(neglogLH)(params, procs, datatemp)
     print(hess)
     print()
 
     print("covariance:")
-    cov = numpy.linalg.inv(hess)
     print(cov)
     print()
 
@@ -84,7 +93,7 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3, gradtolerance=None, ver
     print()
 
     print("predicted fractions:")
-    predfrac = normalize(predictprobs(params, procs))
+    predfrac = normalize(predictprobs(fracs, procs))
     print(predfrac)
     print()
 
