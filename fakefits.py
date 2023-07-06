@@ -23,9 +23,6 @@ regions = \
 
 fin = uproot.open(argv[1])
 for region in regions:
-  if region != "TRIG_Tight_dm0_eta2_mu999_b90.0_110.0":
-    continue
-
   print(region)
   print()
 
