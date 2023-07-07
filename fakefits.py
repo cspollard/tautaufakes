@@ -8,10 +8,10 @@ dms = [ 0 , 3 ]
 etabins = [ 0 , 1 , 2 ]
 trigbins = [ "TRIG" , "NOTRIG" ]
 
-ptedges = [ "50.0" , "70.0" , "90.0" , "110.0" , "130.0" ]
+ptedges = [ "50" , "70" , "90" , "110" , "130" ]
 ptbins = list(zip(ptedges[:-1] , ptedges[1:]))
 
-processes = [ "Zmm" , "hJVT" , "lJVT" ]
+processes = [ "true" , "Zmm" , "hJVT" , "lJVT" ]
 
 
 regions = \
@@ -27,7 +27,7 @@ for region in regions:
   print()
 
   prochists = \
-    [ numpy.array(fin["h_" + procname + "_" + region].values())
+    [ fit.normalize(numpy.array(fin["h_" + procname + "_" + region].values()))
         for procname in processes
     ]
 
@@ -38,7 +38,6 @@ for region in regions:
     ( list(map( lambda x : numpy.expand_dims(x, axis=1) , prochists ))
     , axis=1
     )
-
 
   cv , cov = \
     fit.fitProcFracs \
@@ -53,3 +52,9 @@ for region in regions:
   print("predicted fractions:")
   print(fit.toprob(cv))
   print()
+
+  print("predicted cov:")
+  print(cov)
+  print()
+
+  break
