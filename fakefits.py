@@ -8,10 +8,11 @@ dms = [ 0 , 3 ]
 etabins = [ 0 , 1 , 2 ]
 trigbins = [ "TRIG" , "NOTRIG" ]
 
-ptedges = [ "50" , "70" , "90" , "110" , "130" ]
+ptedges = [ "50.0" , "70.0" , "90.0" , "110.0" , "130.0" ]
 ptbins = list(zip(ptedges[:-1] , ptedges[1:]))
 
-processes = [ "true" , "Zmm" , "hJVT" , "lJVT" ]
+# processes = [ "true" , "Zmm" , "hJVT" , "lJVT" ]
+processes = [ "Zmm" , "hJVT" , "lJVT" ]
 
 
 regions = \
@@ -43,10 +44,12 @@ for region in regions:
     fit.fitProcFracs \
     ( procarray
     , datahist
-    , nsteps=100000
+    , nsteps=1000000
     , lr=1e-4
     , gradtolerance=1e-2
-    , verbose=False
+    , verbose=True
+    , plotprefix="plots/" + region + "-"
+    , proclabels=["quark-enriched" , "gluon-enriched" , "pileup-enriched"]
     )
 
   print("predicted fractions:")
@@ -56,5 +59,3 @@ for region in regions:
   print("predicted cov:")
   print(cov)
   print()
-
-  break

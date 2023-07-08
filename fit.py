@@ -3,6 +3,7 @@ import jax.numpy as numpy
 import jax
 import optax
 import distrax
+from cpplot.cpplot import comparehist, zeroerr, divbinom, divuncorr
 
 
 # get a prediction for bin probabilities
@@ -24,11 +25,14 @@ def neglogLH(norms , processes , data):
   probs = predictprobs(fracs, processes)
 
   # regularization to prevent negative fractions
-  regularization = numpy.sum(jax.nn.softplus(-10000.0*fracs))
+  regularization = numpy.sum(jax.nn.softplus(-1000.0*fracs))
 
   return \
     regularization \
     - distrax.Multinomial(numpy.sum(data), probs=probs).log_prob(data)
+
+  # return \
+  #   - distrax.Multinomial(numpy.sum(data), probs=probs).log_prob(data)
 
 
 def normalize(xs, axis=None):
@@ -39,7 +43,16 @@ def toprob(fracs):
   return numpy.concatenate([fracs, numpy.expand_dims(1-numpy.sum(fracs), 0)])
 
 
-def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3, gradtolerance=None, verbose=True):
+def fitProcFracs \
+  ( procs
+  , datatemp
+  , nsteps=20000
+  , lr=1e-3
+  , gradtolerance=None
+  , verbose=True
+  , plotprefix=None
+  , proclabels=None
+  ):
 
   nprocs = procs.shape[1]
   startfrac = 1.0 / nprocs
@@ -55,16 +68,20 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3, gradtolerance=None, ver
 
   for _ in range(nsteps):
     loss_value, grads = jax.value_and_grad(neglogLH)(params, procs, datatemp)
-    updates, opt_state = optimizer.update(grads, opt_state, params)
-    params = optax.apply_updates(params, updates)
 
     if gradtolerance is not None:
-      if numpy.linalg.norm(grads) < gradtolerance:
+      if numpy.all(numpy.abs(grads) < gradtolerance):
         break
+
+    updates, opt_state = optimizer.update(grads, opt_state, params)
+    params = optax.apply_updates(params, updates)
 
 
   hess = jax.hessian(neglogLH)(params, procs, datatemp)
   cov = numpy.linalg.inv(hess)
+  fracs = toprob(params)
+  predfrac = normalize(predictprobs(fracs, procs))
+  datafrac = normalize(datatemp)
 
   if verbose:
     print("ntotal data:")
@@ -72,7 +89,6 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3, gradtolerance=None, ver
     print()
 
     print("fractions:")
-    fracs = toprob(params)
     print(fracs)
     print()
 
@@ -80,9 +96,9 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3, gradtolerance=None, ver
     print(jax.grad(neglogLH)(params, procs, datatemp))
     print()
 
-    print("hessian:")
-    print(hess)
-    print()
+    # print("hessian:")
+    # print(hess)
+    # print()
 
     print("covariance:")
     print(cov)
@@ -93,18 +109,54 @@ def fitProcFracs(procs, datatemp, nsteps=20000, lr=1e-3, gradtolerance=None, ver
     print()
 
     print("predicted fractions:")
-    predfrac = normalize(predictprobs(fracs, procs))
     print(predfrac)
     print()
 
     print("data fractions:")
-    datafrac = normalize(datatemp)
     print(datafrac)
     print()
 
     print("data/prediction:")
     print(datafrac / predfrac)
     print()
+
+
+  if plotprefix is not None:
+    datafrac = divbinom(datatemp, datatemp.at[:].set(numpy.sum(datatemp)))
+    pred =  zeroerr(predfrac)
+
+    if proclabels:
+      prochists = [ zeroerr(p) for p in (fracs.T * procs).T ]
+
+      fig = \
+        comparehist \
+        ( [datafrac , pred] + prochists
+        , numpy.arange(datatemp.shape[0]+1)
+        , [ "data" , "fit" ] + proclabels
+        , "$\\tau$ width bin"
+        , "binned probability density"
+        , markers=["o" , ""] + [""]*len(proclabels)
+        , alphas=[ 1 , 1 ] + [0.25]*len(proclabels)
+        , ratio=True
+        )
+
+    else:
+      fig = \
+        comparehist \
+        ( [datafrac , pred]
+        , numpy.arange(datatemp.shape[0]+1)
+        , [ "data" , "fit" ]
+        , "$\\tau$ width bin"
+        , "binned probability density"
+        , markers=["o" , ""]
+        , ratio=True
+        )
+
+    plt = fig.get_axes()[0]
+    plt.legend()
+    plt = fig.get_axes()[1]
+    plt.set_ylim((0.5, 2))
+    fig.savefig(plotprefix + "datafitcomp.pdf")
 
   return params , cov
 
