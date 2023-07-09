@@ -3,7 +3,6 @@ import jax.numpy as numpy
 import jax
 import optax
 import distrax
-from cpplot.cpplot import comparehist, zeroerr, divbinom, divuncorr
 
 
 # get a prediction for bin probabilities
@@ -50,8 +49,6 @@ def fitProcFracs \
   , lr=1e-3
   , gradtolerance=None
   , verbose=True
-  , plotprefix=None
-  , proclabels=None
   ):
 
   nprocs = procs.shape[1]
@@ -120,43 +117,6 @@ def fitProcFracs \
     print(datafrac / predfrac)
     print()
 
-
-  if plotprefix is not None:
-    datafrac = divbinom(datatemp, datatemp.at[:].set(numpy.sum(datatemp)))
-    pred =  zeroerr(predfrac)
-
-    if proclabels:
-      prochists = [ zeroerr(p) for p in (fracs.T * procs).T ]
-
-      fig = \
-        comparehist \
-        ( [datafrac , pred] + prochists
-        , numpy.arange(datatemp.shape[0]+1)
-        , [ "data" , "fit" ] + proclabels
-        , "$\\tau$ width bin"
-        , "binned probability density"
-        , markers=["o" , ""] + [""]*len(proclabels)
-        , alphas=[ 1 , 1 ] + [0.25]*len(proclabels)
-        , ratio=True
-        )
-
-    else:
-      fig = \
-        comparehist \
-        ( [datafrac , pred]
-        , numpy.arange(datatemp.shape[0]+1)
-        , [ "data" , "fit" ]
-        , "$\\tau$ width bin"
-        , "binned probability density"
-        , markers=["o" , ""]
-        , ratio=True
-        )
-
-    plt = fig.get_axes()[0]
-    plt.legend()
-    plt = fig.get_axes()[1]
-    plt.set_ylim((0.5, 2))
-    fig.savefig(plotprefix + "datafitcomp.pdf")
 
   return params , cov
 
