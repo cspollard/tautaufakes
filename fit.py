@@ -3,7 +3,6 @@ import jax.numpy as numpy
 import jax.scipy.optimize as optimize
 import jax
 import distrax
-from cpplot.cpplot import comparehist, comparehistratio, zeroerr, divbinom
 
 
 # get a prediction for bin probabilities
@@ -104,6 +103,7 @@ def fitProcFracs \
 
   if plotprefix is not None:
     from matplotlib import figure
+    from cpplot.cpplot import comparehist, comparehistratio, zeroerr, divbinom
 
     datafrac = divbinom(datatemp, datatemp.at[:].set(numpy.sum(datatemp)))
     pred =  zeroerr(predfrac)
