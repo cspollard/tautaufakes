@@ -5,8 +5,6 @@ import jax
 import distrax
 from cpplot.cpplot import comparehist, comparehistratio, zeroerr, divbinom
 
-from matplotlib import figure
-
 
 # get a prediction for bin probabilities
 # the params are the fractions for n-1 processes.
@@ -105,6 +103,8 @@ def fitProcFracs \
 
 
   if plotprefix is not None:
+    from matplotlib import figure
+
     datafrac = divbinom(datatemp, datatemp.at[:].set(numpy.sum(datatemp)))
     pred =  zeroerr(predfrac)
 
