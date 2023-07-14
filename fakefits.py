@@ -2,28 +2,35 @@ import uproot
 import jax.numpy as numpy
 import fit
 from sys import argv
+import matplotlib.figure as figure
 
 
 dms = [ 0 , 3 ]
 etabins = [ 0 , 1 , 2 ]
 trigbins = [ "TRIG" , "NOTRIG" ]
 
-ptedges = [ "50.0" , "70.0" , "90.0" , "110.0" , "130.0" ]
+ptedges = [ "50" , "70" , "90" , "110" , "130" ]
 ptbins = list(zip(ptedges[:-1] , ptedges[1:]))
 
 # processes = [ "true" , "Zmm" , "hJVT" , "lJVT" ]
 processes = [ "Zmm" , "hJVT" , "lJVT" ]
 
+signs = [ "OS" , "SS" ]
+
+massregions = [ "HighMass" ]
 
 regions = \
-  [ "%s_Tight_dm%d_eta%d_mu999_b%s_%s" \
-    % (trigbin , dm , etabin ,ptbin[0] , ptbin[1])
+  [ "%s%s_%s_Tight_dm%d_eta%d_mu999_b%s_%s" \
+    % (massregion, sign, trigbin , dm , etabin ,ptbin[0] , ptbin[1])
 
-    for trigbin in trigbins for dm in dms for etabin in etabins for ptbin in ptbins
+    for massregion in massregions for sign in signs for trigbin in trigbins for dm in dms for etabin in etabins for ptbin in ptbins
   ]
 
 fin = uproot.open(argv[1])
 for region in regions:
+  if "110" not in region:
+    continue
+
   print(region)
   print()
 
@@ -44,7 +51,7 @@ for region in regions:
     fit.fitProcFracs \
     ( procarray
     , datahist
-    , nsteps=1000000
+    , nsteps=10
     , lr=1e-4
     , gradtolerance=1e-2
     , verbose=True
@@ -59,3 +66,5 @@ for region in regions:
   print("predicted cov:")
   print(cov)
   print()
+
+  break

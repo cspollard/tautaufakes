@@ -3,7 +3,8 @@ import jax.numpy as numpy
 import jax
 import optax
 import distrax
-from cpplot.cpplot import comparehist, zeroerr, divbinom, divuncorr
+from cpplot.cpplot import comparehist, comparehistratio, zeroerr, divbinom
+import matplotlib.figure as figure
 
 
 # get a prediction for bin probabilities
@@ -125,32 +126,33 @@ def fitProcFracs \
     datafrac = divbinom(datatemp, datatemp.at[:].set(numpy.sum(datatemp)))
     pred =  zeroerr(predfrac)
 
-    if proclabels:
-      prochists = [ zeroerr(p) for p in (fracs.T * procs).T ]
+    fig = figure.Figure((8, 8))
+    fig.add_subplot(3, 1, (1, 2))
+    fig.add_subplot(3, 1, 3)
 
-      fig = \
-        comparehist \
-        ( [datafrac , pred] + prochists
-        , numpy.arange(datatemp.shape[0]+1)
-        , [ "data" , "fit" ] + proclabels
-        , "$\\tau$ width bin"
-        , "binned probability density"
-        , markers=["o" , ""] + [""]*len(proclabels)
-        , alphas=[ 1 , 1 ] + [0.25]*len(proclabels)
-        , ratio=True
-        )
+    prochists = [ zeroerr(p) for p in (fracs.T * procs).T ]
 
-    else:
-      fig = \
-        comparehist \
-        ( [datafrac , pred]
-        , numpy.arange(datatemp.shape[0]+1)
-        , [ "data" , "fit" ]
-        , "$\\tau$ width bin"
-        , "binned probability density"
-        , markers=["o" , ""]
-        , ratio=True
-        )
+    comparehist \
+      ( fig.axes[0]
+      , [datafrac , pred] + prochists
+      , numpy.arange(datatemp.shape[0]+1)
+      , [ "data" , "fit" ] + proclabels
+      , "$\\tau$ width bin"
+      , "binned probability density"
+      , markers=["o" , ""] + [""]*len(proclabels)
+      , alphas=[ 1 , 1 ] + [0.25]*len(proclabels)
+      )
+
+    comparehistratio \
+      ( fig.axes[1]
+      , [datafrac , pred] + prochists
+      , numpy.arange(datatemp.shape[0]+1)
+      , [ "data" , "fit" ] + proclabels
+      , "$\\tau$ width bin"
+      , "binned probability density"
+      , markers=["o" , ""] + [""]*len(proclabels)
+      , alphas=[ 1 , 1 ] + [0.25]*len(proclabels)
+      )
 
     plt = fig.get_axes()[0]
     plt.legend()
