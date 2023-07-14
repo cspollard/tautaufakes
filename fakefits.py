@@ -5,7 +5,7 @@ from sys import argv
 import matplotlib.figure as figure
 
 
-dms = [ 0 , 3 ]
+dms = [ "012" , "34" ]
 etabins = [ 0 , 1 , 2 ]
 trigbins = [ "TRIG" , "NOTRIG" ]
 
@@ -20,7 +20,7 @@ signs = [ "OS" , "SS" ]
 massregions = [ "HighMass" ]
 
 regions = \
-  [ "%s%s_%s_Tight_dm%d_eta%d_mu999_b%s_%s" \
+  [ "%s%s_%s_Tight_dm%s_eta%d_mu999_b%s_%s" \
     % (massregion, sign, trigbin , dm , etabin ,ptbin[0] , ptbin[1])
 
     for massregion in massregions for sign in signs for trigbin in trigbins for dm in dms for etabin in etabins for ptbin in ptbins
@@ -28,8 +28,6 @@ regions = \
 
 fin = uproot.open(argv[1])
 for region in regions:
-  if "110" not in region:
-    continue
 
   print(region)
   print()
@@ -51,7 +49,7 @@ for region in regions:
     fit.fitProcFracs \
     ( procarray
     , datahist
-    , nsteps=10
+    , nsteps=100000
     , lr=1e-4
     , gradtolerance=1e-2
     , verbose=True
@@ -66,5 +64,3 @@ for region in regions:
   print("predicted cov:")
   print(cov)
   print()
-
-  break

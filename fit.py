@@ -25,15 +25,15 @@ def neglogLH(norms , processes , data):
 
   probs = predictprobs(fracs, processes)
 
-  # regularization to prevent negative fractions
-  regularization = numpy.sum(jax.nn.softplus(-1000.0*fracs))
-
-  return \
-    regularization \
-    - distrax.Multinomial(numpy.sum(data), probs=probs).log_prob(data)
+  # # regularization to prevent negative fractions
+  # regularization = numpy.sum(jax.nn.softplus(-1000.0*fracs))
 
   # return \
+  #   regularization \
   #   - distrax.Multinomial(numpy.sum(data), probs=probs).log_prob(data)
+
+  return \
+    - distrax.Multinomial(numpy.sum(data), probs=probs).log_prob(data)
 
 
 def normalize(xs, axis=None):
@@ -132,30 +132,37 @@ def fitProcFracs \
 
     prochists = [ zeroerr(p) for p in (fracs.T * procs).T ]
 
+    proclabs = \
+      [ proclab + "(%0.2f%%)" % (fracs[i] * 100) for i , proclab in enumerate(proclabels) ]
+
     comparehist \
       ( fig.axes[0]
       , [datafrac , pred] + prochists
       , numpy.arange(datatemp.shape[0]+1)
-      , [ "data" , "fit" ] + proclabels
+      , [ "data" , "fit" ] + proclabs
       , "$\\tau$ width bin"
       , "binned probability density"
-      , markers=["o" , ""] + [""]*len(proclabels)
-      , alphas=[ 1 , 1 ] + [0.25]*len(proclabels)
+      , markers=["o" , ""] + [""]*len(proclabs)
+      , alphas=[ 1 , 1 ] + [0.25]*len(proclabs)
       )
+
 
     comparehistratio \
       ( fig.axes[1]
       , [datafrac , pred] + prochists
       , numpy.arange(datatemp.shape[0]+1)
-      , [ "data" , "fit" ] + proclabels
+      , [ "data" , "fit" ] + proclabs
       , "$\\tau$ width bin"
       , "binned probability density"
-      , markers=["o" , ""] + [""]*len(proclabels)
-      , alphas=[ 1 , 1 ] + [0.25]*len(proclabels)
+      , markers=["o" , ""] + [""]*len(proclabs)
+      , alphas=[ 1 , 1 ] + [0.25]*len(proclabs)
       )
 
     plt = fig.get_axes()[0]
     plt.legend()
+    plt.set_xticks([])
+    plt.set_xticklabels([])
+    plt.set_xlabel("")
     plt = fig.get_axes()[1]
     plt.set_ylim((0.5, 2))
     fig.savefig(plotprefix + "datafitcomp.pdf")
