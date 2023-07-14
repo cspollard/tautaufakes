@@ -70,12 +70,12 @@ def fitProcFracs \
   #   updates, opt_state = optimizer.update(grads, opt_state, params)
   #   params = optax.apply_updates(params, updates)
 
-  res = optimize.minimize(neglogLH , params , method="BFGS" , args=(procs, datatemp))
-  print(res)
-  params = res.x
+  result = optimize.minimize(neglogLH , params , method="BFGS" , args=(procs, datatemp))
+  params = result.x
 
   hess = jax.hessian(neglogLH)(params, procs, datatemp)
   cov = numpy.linalg.inv(hess)
+
   fracs = toprob(params)
   predfrac = normalize(predictprobs(fracs, procs))
   datafrac = normalize(datatemp)
