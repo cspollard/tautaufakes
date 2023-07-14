@@ -2,9 +2,10 @@
 import jax.numpy as numpy
 import jax.scipy.optimize as optimize
 import jax
-import optax
 import distrax
 from cpplot.cpplot import comparehist, comparehistratio, zeroerr, divbinom
+
+from matplotlib import figure
 
 
 # get a prediction for bin probabilities
@@ -41,9 +42,6 @@ def normalize(xs, axis=None):
 def fitProcFracs \
   ( procs
   , datatemp
-  , nsteps=20000
-  , lr=1e-3
-  , gradtolerance=None
   , verbose=True
   , plotprefix=None
   , proclabels=None
@@ -52,23 +50,11 @@ def fitProcFracs \
   nprocs = procs.shape[1]
   params = numpy.zeros(nprocs)
 
-  optimizer = optax.adam(learning_rate=lr)
-  opt_state = optimizer.init(params)
-
   if verbose:
     print("initial -llh:")
     print(neglogLH(params, procs, datatemp))
     print()
 
-  # for _ in range(nsteps):
-  #   loss_value, grads = jax.value_and_grad(neglogLH)(params, procs, datatemp)
-
-  #   if gradtolerance is not None:
-  #     if numpy.all(numpy.abs(grads) < gradtolerance):
-  #       break
-
-  #   updates, opt_state = optimizer.update(grads, opt_state, params)
-  #   params = optax.apply_updates(params, updates)
 
   result = optimize.minimize(neglogLH , params , method="BFGS" , args=(procs, datatemp))
   params = result.x
@@ -116,6 +102,52 @@ def fitProcFracs \
     print("data/prediction:")
     print(datafrac / predfrac)
     print()
+
+
+  if plotprefix is not None:
+    datafrac = divbinom(datatemp, datatemp.at[:].set(numpy.sum(datatemp)))
+    pred =  zeroerr(predfrac)
+
+    fig = figure.Figure((8, 8))
+    fig.add_subplot(3, 1, (1, 2))
+    fig.add_subplot(3, 1, 3)
+
+    prochists = [ zeroerr(p) for p in (fracs.T * procs).T ]
+
+    proclabs = \
+      [ proclab + "(%0.2f%%)" % (fracs[i] * 100) for i , proclab in enumerate(proclabels) ]
+
+    comparehist \
+      ( fig.axes[0]
+      , [datafrac , pred] + prochists
+      , numpy.arange(datatemp.shape[0]+1)
+      , [ "data" , "fit" ] + proclabs
+      , "$\\tau$ width bin"
+      , "binned probability density"
+      , markers=["o" , ""] + [""]*len(proclabs)
+      , alphas=[ 1 , 1 ] + [0.25]*len(proclabs)
+      )
+
+
+    comparehistratio \
+      ( fig.axes[1]
+      , [datafrac , pred] + prochists
+      , numpy.arange(datatemp.shape[0]+1)
+      , [ "data" , "fit" ] + proclabs
+      , "$\\tau$ width bin"
+      , "binned probability density"
+      , markers=["o" , ""] + [""]*len(proclabs)
+      , alphas=[ 1 , 1 ] + [0.25]*len(proclabs)
+      )
+
+    plt = fig.get_axes()[0]
+    plt.legend()
+    plt.set_xticks([])
+    plt.set_xticklabels([])
+    plt.set_xlabel("")
+    plt = fig.get_axes()[1]
+    plt.set_ylim((0.5, 2))
+    fig.savefig(plotprefix + "datafitcomp.pdf")
 
 
   return params , cov
