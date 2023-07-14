@@ -50,8 +50,8 @@ for region in regions:
     ( procarray
     , datahist
     , nsteps=100000
-    , lr=1e-4
-    , gradtolerance=1e-2
+    , lr=1e-3
+    , gradtolerance=1e-4
     , verbose=True
     , plotprefix="plots/" + region + "-"
     , proclabels=["quark-enriched" , "gluon-enriched" , "pileup-enriched"]
