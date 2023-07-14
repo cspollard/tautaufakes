@@ -1,5 +1,6 @@
 
 import jax.numpy as numpy
+import jax.scipy.optimize as optimize
 import jax
 import optax
 import distrax
@@ -59,16 +60,19 @@ def fitProcFracs \
     print(neglogLH(params, procs, datatemp))
     print()
 
-  for _ in range(nsteps):
-    loss_value, grads = jax.value_and_grad(neglogLH)(params, procs, datatemp)
+  # for _ in range(nsteps):
+  #   loss_value, grads = jax.value_and_grad(neglogLH)(params, procs, datatemp)
 
-    if gradtolerance is not None:
-      if numpy.all(numpy.abs(grads) < gradtolerance):
-        break
+  #   if gradtolerance is not None:
+  #     if numpy.all(numpy.abs(grads) < gradtolerance):
+  #       break
 
-    updates, opt_state = optimizer.update(grads, opt_state, params)
-    params = optax.apply_updates(params, updates)
+  #   updates, opt_state = optimizer.update(grads, opt_state, params)
+  #   params = optax.apply_updates(params, updates)
 
+  res = optimize.minimize(neglogLH , params , method="BFGS" , args=(procs, datatemp))
+  print(res)
+  params = res.x
 
   hess = jax.hessian(neglogLH)(params, procs, datatemp)
   cov = numpy.linalg.inv(hess)
