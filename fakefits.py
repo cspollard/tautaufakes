@@ -49,7 +49,7 @@ for region in regions:
     fit.fitProcFracs \
     ( procarray
     , datahist
-    , verbose=True
+    , verbose=False
     , plotprefix="plots/" + region + "-"
     , proclabels=["quark-enriched" , "gluon-enriched" , "pileup-enriched"]
     )
@@ -58,6 +58,18 @@ for region in regions:
   print(fit.toprob(cv))
   print()
 
-  print("predicted cov:")
-  print(cov)
+  # print("predicted cov:")
+  # print(cov)
+  # print()
+
+  eigs , trans = numpy.linalg.eigh(cov.astype("float64"))
+  print("diagonal cov:")
+  print(eigs)
   print()
+
+  print("svd:")
+  print(numpy.linalg.svd(cov))
+
+  # print("transform:")
+  # print(trans)
+  # print()
