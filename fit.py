@@ -1,6 +1,7 @@
 
 import jax.numpy as numpy
 import jax.scipy.optimize as optimize
+import jax.random as random
 import jax
 import distrax
 
@@ -15,6 +16,10 @@ def predictprobs(fracs , processes):
 # (not needed for multinomial...)
 def logPoiss(ks , lambdas):
   return ks * numpy.log(lambdas) - lambdas - ks * numpy.log(ks) + ks
+
+
+def samplePoiss(thatk, lambdas):
+  return random.poisson(thatk, lambdas)
 
 
 def toprob(fracs):
@@ -39,87 +44,64 @@ def normalize(xs, axis=None):
 def fitProcFracs \
   ( procs
   , datatemp
-  , verbose=True
   , plotprefix=None
   , proclabels=None
+  , nthrows=1
   ):
 
   nprocs = procs.shape[1]
   params = numpy.zeros(nprocs)
 
-  if verbose:
-    print("initial -llh:")
-    print(neglogLH(params, procs, datatemp))
-    print()
+  thatk = random.PRNGKey(0)
+  theseks = random.split(thatk, nthrows)
+  samples = [ samplePoiss(k , datatemp) for k in theseks ]
 
+  predfracs = \
+    numpy.stack \
+    ( [ toprob \
+        ( optimize.minimize \
+          ( neglogLH , params , method="BFGS" , args=(procs, dat)
+          ) .x
+        )
+        for dat in samples
+      ]
+    )
 
-  result = optimize.minimize(neglogLH , params , method="BFGS" , args=(procs, datatemp))
-  params = result.x
+  predbinfracs = numpy.stack( [ normalize(predictprobs(predfrac, procs)) for predfrac in predfracs ] )
 
-  hess = jax.hessian(neglogLH)(params, procs, datatemp)
-  cov = numpy.linalg.inv(hess)
+  databinfracs = numpy.stack( [ normalize(dat) for dat in samples ] )
 
-  fracs = toprob(params)
-  predfrac = normalize(predictprobs(fracs, procs))
-  datafrac = normalize(datatemp)
+  meanfracs = numpy.mean(predfracs, axis=0)
+  covfracs = numpy.cov(predfracs.T)
 
-  if verbose:
-    print("ntotal data:")
-    print(numpy.sum(datatemp))
-    print()
+  meanpredbinfracs = numpy.mean(predbinfracs, axis=0)
+  stdpredbinfracs = numpy.std(predbinfracs, axis=0)
 
-    print("fractions:")
-    print(fracs)
-    print()
-
-    print("gradients:")
-    print(jax.grad(neglogLH)(params, procs, datatemp))
-    print()
-
-    # print("hessian:")
-    # print(hess)
-    # print()
-
-    print("covariance:")
-    print(cov)
-    print()
-
-    print("final -llh:")
-    print(neglogLH(params, procs, datatemp))
-    print()
-
-    print("predicted fractions:")
-    print(predfrac)
-    print()
-
-    print("data fractions:")
-    print(datafrac)
-    print()
-
-    print("data/prediction:")
-    print(datafrac / predfrac)
-    print()
+  meandatabinfracs = numpy.mean(databinfracs, axis=0)
+  stddatabinfracs = numpy.std(databinfracs, axis=0)
 
 
   if plotprefix is not None:
     from matplotlib import figure
-    from cpplot.cpplot import comparehist, comparehistratio, zeroerr, divbinom
+    from cpplot.cpplot import comparehist, comparehistratio, zeroerr, divbinom, poiserr
 
-    datafrac = divbinom(datatemp, datatemp.at[:].set(numpy.sum(datatemp)))
-    pred =  zeroerr(predfrac)
+    datafrac = meandatabinfracs , stddatabinfracs
+    predfrac = meanpredbinfracs , stdpredbinfracs
 
     fig = figure.Figure((8, 8))
     fig.add_subplot(3, 1, (1, 2))
     fig.add_subplot(3, 1, 3)
 
-    prochists = [ zeroerr(p) for p in (fracs.T * procs).T ]
+    prochists = [ zeroerr(p) for p in (meanfracs.T * procs).T ]
 
     proclabs = \
-      [ proclab + "(%0.2f%%)" % (fracs[i] * 100) for i , proclab in enumerate(proclabels) ]
+      [ proclab + "(%0.2f $\\pm$ %0.2f %%)" \
+        % (meanfracs[i] * 100, numpy.sqrt(covfracs[i][i]))
+        for i , proclab in enumerate(proclabels) ]
 
     comparehist \
       ( fig.axes[0]
-      , [datafrac , pred] + prochists
+      , [datafrac , predfrac] + prochists
       , numpy.arange(datatemp.shape[0]+1)
       , [ "data" , "fit" ] + proclabs
       , "$\\tau$ width bin"
@@ -131,11 +113,11 @@ def fitProcFracs \
 
     comparehistratio \
       ( fig.axes[1]
-      , [datafrac , pred] + prochists
+      , [datafrac , predfrac] + prochists
       , numpy.arange(datatemp.shape[0]+1)
       , [ "data" , "fit" ] + proclabs
       , "$\\tau$ width bin"
-      , "binned probability density"
+      , "density ratio to data"
       , markers=["o" , ""] + [""]*len(proclabs)
       , alphas=[ 1 , 1 ] + [0.25]*len(proclabs)
       )
@@ -150,7 +132,7 @@ def fitProcFracs \
     fig.savefig(plotprefix + "datafitcomp.pdf")
 
 
-  return params , cov
+  return meanfracs , covfracs
 
 
 if __name__ == "__main__":

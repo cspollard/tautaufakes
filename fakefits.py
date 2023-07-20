@@ -29,6 +29,13 @@ regions = \
 fin = uproot.open(argv[1])
 for region in regions:
 
+  if "HighMassSS_NOTRIG_Tight_dm012_eta0_mu999_b50_70" not in region \
+    and "HighMassSS_NOTRIG_Tight_dm012_eta0_mu999_b110_130" not in region \
+    and "HighMassSS_TRIG_Tight_dm012_eta0_mu999_b50_70" not in region \
+    and "HighMassSS_TRIG_Tight_dm012_eta0_mu999_b110_130" not in region:
+    continue
+
+
   print(region)
   print()
 
@@ -49,26 +56,22 @@ for region in regions:
     fit.fitProcFracs \
     ( procarray
     , datahist
-    , verbose=False
     , plotprefix="plots/" + region + "-"
     , proclabels=["quark-enriched" , "gluon-enriched" , "pileup-enriched"]
+    , nthrows=64
     )
 
   print("predicted fractions:")
-  print(fit.toprob(cv))
+  print(cv)
   print()
 
-  # print("predicted cov:")
-  # print(cov)
-  # print()
-
-  eigs , trans = numpy.linalg.eigh(cov.astype("float64"))
-  print("diagonal cov:")
-  print(eigs)
+  print("predicted cov:")
+  print(cov)
   print()
 
-  print("svd:")
-  print(numpy.linalg.svd(cov))
+  print("predicted std:")
+  print(numpy.sqrt(numpy.diagonal(cov)))
+  print()
 
   # print("transform:")
   # print(trans)
